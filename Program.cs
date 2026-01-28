@@ -1,170 +1,207 @@
-﻿// See https://aka.ms/new-console-template for more information
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-class Book
-{
-    public string Title { get; set; }
-    public string Author { get; set; }
-    public int Year { get; set; }
-    public string Genre { get; set; }
-
-    public override string ToString()
-    {
-        return $"{Title} – {Author} ({Year}), Genre: {Genre}";
-    }
-}
+using System.Text.Json;
 
 class Program
 {
-    static List<Book> library = new List<Book>();
+    static List<Kirja> kirjat = new List<Kirja>();
+    const string tiedosto = "kirjat.json";
 
     static void Main()
     {
-        bool running = true;
+        LataaTiedostosta();
 
-        while (running)
+        while (true)
         {
             Console.WriteLine("\n--- Kotikirjasto ---");
-            Console.WriteLine("1. Lisää kirja");
-            Console.WriteLine("2. Poista kirja");
-            Console.WriteLine("3. Näytä kaikki kirjat");
-            Console.WriteLine("4. Näytä kirjat genren mukaan");
-            Console.WriteLine("5. Hae kirja (nimi tai kirjoittaja)");
-            Console.WriteLine("0. Lopeta");
-
+            Console.WriteLine("1) Lisää kirja");
+            Console.WriteLine("2) Poista kirja");
+            Console.WriteLine("3) Näytä kaikki kirjat");
+            Console.WriteLine("4) Näytä kirjat genren mukaan");
+            Console.WriteLine("5) Etsi kirja");
+            Console.WriteLine("6) Tallenna ja lopeta");
             Console.Write("Valinta: ");
-            string choice = Console.ReadLine();
 
-            switch (choice)
+            string? valinta = Console.ReadLine();
+
+            switch (valinta)
             {
-                case "1":
-                    AddBook();
-                    break;
-                case "2":
-                    RemoveBook();
-                    break;
-                case "3":
-                    ShowAllBooks();
-                    break;
-                case "4":
-                    ShowBooksByGenre();
-                    break;
-                case "5":
-                    SearchBooks();
-                    break;
-                case "0":
-                    running = false;
-                    break;
-                default:
-                    Console.WriteLine("Virheellinen valinta.");
-                    break;
+                case "1": LisaaKirja(); break;
+                case "2": PoistaKirja(); break;
+                case "3": NaytaKaikki(); break;
+                case "4": NaytaGenrenMukaan(); break;
+                case "5": EtsiKirja(); break;
+                case "6": TallennaJaLopeta(); return;
+                default: Console.WriteLine("Virheellinen valinta."); break;
             }
         }
     }
 
-    // 🔹 Lisää kirja
-    static void AddBook()
+    static void LisaaKirja()
     {
-        Console.Write("Nimi: ");
-        string title = Console.ReadLine();
+        Console.Write("Kirjan nimi: ");
+        string? nimi = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(nimi))
+        {
+            Console.WriteLine("Nimi ei voi olla tyhjä.");
+            return;
+        }
 
         Console.Write("Kirjoittaja: ");
-        string author = Console.ReadLine();
+        string? kirjoittaja = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(kirjoittaja))
+        {
+            Console.WriteLine("Kirjoittaja ei voi olla tyhjä.");
+            return;
+        }
 
         Console.Write("Julkaisuvuosi: ");
-        int year = int.Parse(Console.ReadLine());
+        string? vuosiSyote = Console.ReadLine();
+        if (!int.TryParse(vuosiSyote, out int vuosi))
+        {
+            Console.WriteLine("Virheellinen vuosi.");
+            return;
+        }
 
         Console.Write("Genre: ");
-        string genre = Console.ReadLine();
-
-        library.Add(new Book
+        string? genre = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(genre))
         {
-            Title = title,
-            Author = author,
-            Year = year,
-            Genre = genre
-        });
+            Console.WriteLine("Genre ei voi olla tyhjä.");
+            return;
+        }
 
-        Console.WriteLine("Kirja lisätty.");
+        kirjat.Add(new Kirja(nimi, kirjoittaja, vuosi, genre));
+        Console.WriteLine("Kirja lisätty!");
     }
 
-    // 🔹 Poista kirja
-    static void RemoveBook()
+    static void PoistaKirja()
     {
         Console.Write("Anna poistettavan kirjan nimi: ");
-        string title = Console.ReadLine();
+        string? nimi = Console.ReadLine();
 
-        var book = library.FirstOrDefault(b =>
-            b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
-
-        if (book != null)
+        if (string.IsNullOrWhiteSpace(nimi))
         {
-            library.Remove(book);
-            Console.WriteLine("Kirja poistettu.");
+            Console.WriteLine("Nimi ei voi olla tyhjä.");
+            return;
         }
-        else
+
+        var kirja = kirjat.FirstOrDefault(k => 
+            k.Nimi.Equals(nimi, StringComparison.OrdinalIgnoreCase));
+
+        if (kirja == null)
         {
             Console.WriteLine("Kirjaa ei löytynyt.");
-        }
-    }
-
-    // 🔹 Näytä kaikki kirjat
-    static void ShowAllBooks()
-    {
-        if (library.Count == 0)
-        {
-            Console.WriteLine("Kirjasto on tyhjä.");
             return;
         }
 
-        foreach (var book in library)
-        {
-            Console.WriteLine(book);
-        }
+        kirjat.Remove(kirja);
+        Console.WriteLine("Kirja poistettu.");
     }
 
-    // 🔹 Näytä kirjat genren mukaan
-    static void ShowBooksByGenre()
+    static void NaytaKaikki()
+    {
+        if (!kirjat.Any())
+        {
+            Console.WriteLine("Ei kirjoja.");
+            return;
+        }
+
+        foreach (var k in kirjat)
+            Console.WriteLine(k);
+    }
+
+    static void NaytaGenrenMukaan()
     {
         Console.Write("Anna genre: ");
-        string genre = Console.ReadLine();
+        string? genre = Console.ReadLine();
 
-        var results = library.Where(b =>
-            b.Genre.Equals(genre, StringComparison.OrdinalIgnoreCase));
-
-        if (!results.Any())
+        if (string.IsNullOrWhiteSpace(genre))
         {
-            Console.WriteLine("Ei kirjoja tässä genressä.");
+            Console.WriteLine("Genre ei voi olla tyhjä.");
             return;
         }
 
-        foreach (var book in results)
+        var tulokset = kirjat.Where(k => 
+            k.Genre.Equals(genre, StringComparison.OrdinalIgnoreCase));
+
+        if (!tulokset.Any())
         {
-            Console.WriteLine(book);
+            Console.WriteLine("Ei kirjoja tällä genrellä.");
+            return;
         }
+
+        foreach (var k in tulokset)
+            Console.WriteLine(k);
     }
 
-    // 🔹 Hae kirja nimellä tai kirjoittajalla
-    static void SearchBooks()
+    static void EtsiKirja()
     {
-        Console.Write("Hakusana: ");
-        string query = Console.ReadLine();
+        Console.Write("Anna hakusana (nimi tai kirjoittaja): ");
+        string? haku = Console.ReadLine();
 
-        var results = library.Where(b =>
-            b.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-            b.Author.Contains(query, StringComparison.OrdinalIgnoreCase));
-
-        if (!results.Any())
+        if (string.IsNullOrWhiteSpace(haku))
         {
-            Console.WriteLine("Ei hakutuloksia.");
+            Console.WriteLine("Hakusana ei voi olla tyhjä.");
             return;
         }
 
-        foreach (var book in results)
+        haku = haku.ToLower();
+
+        var tulokset = kirjat.Where(k =>
+            k.Nimi.ToLower().Contains(haku) ||
+            k.Kirjoittaja.ToLower().Contains(haku));
+
+        if (!tulokset.Any())
         {
-            Console.WriteLine(book);
+            Console.WriteLine("Ei osumia.");
+            return;
         }
+
+        foreach (var k in tulokset)
+            Console.WriteLine(k);
+    }
+
+    static void TallennaJaLopeta()
+    {
+        string json = JsonSerializer.Serialize(kirjat, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(tiedosto, json);
+        Console.WriteLine("Tallennettu. Heippa!");
+    }
+
+    static void LataaTiedostosta()
+    {
+        if (File.Exists(tiedosto))
+        {
+            string json = File.ReadAllText(tiedosto);
+            var lista = JsonSerializer.Deserialize<List<Kirja>>(json);
+
+            if (lista != null)
+                kirjat = lista;
+
+            Console.WriteLine("Kirjat ladattu tiedostosta.");
+        }
+    }
+}
+
+class Kirja
+{
+    public string Nimi { get; set; }
+    public string Kirjoittaja { get; set; }
+    public int Vuosi { get; set; }
+    public string Genre { get; set; }
+
+    public Kirja(string nimi, string kirjoittaja, int vuosi, string genre)
+    {
+        Nimi = nimi;
+        Kirjoittaja = kirjoittaja;
+        Vuosi = vuosi;
+        Genre = genre;
+    }
+
+    public override string ToString()
+    {
+        return $"{Nimi} ({Vuosi}) – {Kirjoittaja}, Genre: {Genre}";
     }
 }
